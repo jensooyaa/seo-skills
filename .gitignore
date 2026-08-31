@@ -1,0 +1,10 @@
+# 平台导入时会自动 npm install，本地调试也可能产生
+node_modules/
+package-lock.json
+
+# 平台生成的元数据
+.scan-result.json
+.config-schema.json
+
+# 打包产物
+*.zip
