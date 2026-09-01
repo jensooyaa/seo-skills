@@ -1,15 +1,14 @@
 <!--
-@case 链接组：无意义锚文本，含图片链接取 alt 当锚文本的情形
-+ anchor-text-generic
-- link-empty-href
-- link-fake
+@case 图片组：宽高属性——缺失、只写一半、写百分比，三种都要报；写对的不报
++ img-dimensions-missing
+- img-alt-missing       四张都有 alt
+- img-alt-meaningless
 - h1-missing
 - h1-multiple
 - heading-skip
-- img-alt-missing
-- img-alt-meaningless
-@detail anchor-text-generic 4 个
-@evidence anchor-text-generic aria-label="查看 2026 年供应商准入标准"
+@detail img-dimensions-missing 3 张图片
+@evidence img-dimensions-missing 无 height
+@evidence img-dimensions-missing width="100%"
 -->
 <!doctype html>
 <html lang="zh-CN">
@@ -28,10 +27,11 @@
   <nav><a href="/audit">审核流程</a> <a href="/faq">常见问题</a></nav>
   <main>
     <h1>供应商准入标准</h1>
-    <a href="/audit/process">了解更多</a>
-    <a href="/materials">Read More</a>
-    <a href="/faq" aria-label="查看 2026 年供应商准入标准">详情</a>
-    <a href="/policy"><img width="600" height="400" src="/img/more.png" alt="更多"></a>
+    <h2>准入条件</h2>
+    <img src="/img/a.png" alt="产线上正在装配的三台注塑机">
+    <img src="/img/b.png" alt="质检报告第 3 页的抽样结论表格" width="600">
+    <img src="/img/c.png" alt="展会现场的供应商样品陈列台" width="100%" height="300">
+    <img src="/img/d.png" alt="仓库入库口的扫码复核环节" width="600" height="400">
   </main>
   <footer><p>© 2026 SourcingX 采购中心</p></footer>
 </body>

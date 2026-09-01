@@ -105,6 +105,21 @@ const MUTATIONS = [
     catcher: 'img-03-alt-meaningless',
   },
 
+  {
+    desc: 'img-dimensions-missing 只要属性存在就放过 —— width="100%" 这种无效值被当成写了',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '          return !(hasPixelSize(a.width) && hasPixelSize(a.height));',
+    to: '          return !(a.width != null && a.height != null);',
+    catcher: 'img-06-dimensions',
+  },
+  {
+    desc: 'img-dimensions-missing 只查 width 不查 height —— 只写一半的漏掉',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '          return !(hasPixelSize(a.width) && hasPixelSize(a.height));',
+    to: '          return !hasPixelSize(a.width);',
+    catcher: 'img-06-dimensions',
+  },
+
   // ── 链接组 ──
   {
     desc: 'link-empty-href 把页内锚点也算成空 —— href="#materials" 被误报',

@@ -9,9 +9,10 @@
     "verify": "node tools/verify-vendor.mjs",
     "pack": "node tools/build.mjs && node tools/verify-vendor.mjs && node tools/pack.mjs",
     "ruletest": "node tools/ruletest.mjs",
-    "test": "node tools/ruletest.mjs && node tools/mutation.mjs && node tools/docscheck.mjs",
+    "test": "node tools/ruletest.mjs && node tools/robotstest.mjs && node tools/mutation.mjs && node tools/docscheck.mjs",
     "mutation": "node tools/mutation.mjs",
-    "docscheck": "node tools/docscheck.mjs"
+    "docscheck": "node tools/docscheck.mjs",
+    "robotstest": "node tools/robotstest.mjs"
   },
   "devDependencies": {
     "cheerio": "^1.2.0",

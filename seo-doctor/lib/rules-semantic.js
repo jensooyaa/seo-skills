@@ -62,6 +62,17 @@ function isMeaninglessAlt(alt) {
   );
 }
 
+/**
+ * 有效的图片尺寸属性值：正整数像素。
+ *
+ * ⚠️ `width="100%"` 这种百分比**不是有效值** —— HTML 的 width/height 属性只接受
+ * 像素整数，写百分比浏览器会忽略，等于没写。这是这条规则主要的误报来源方向：
+ * 看到「有 width 属性」就放过，实际上它没起任何作用。
+ */
+function hasPixelSize(value) {
+  return value != null && /^\d+$/.test(String(value).trim()) && Number(value) > 0;
+}
+
 /** 图片的标识：优先 src，没有 src（比如只写了 srcset）时退回开标签 */
 function imgIdent($, el) {
   return el.attribs && el.attribs.src ? el.attribs.src : openTag($, el);
@@ -246,6 +257,36 @@ const rules = [
         detail: `${hits.length} 张图片的 alt 没有描述内容`,
         // alt 原文 + src，两个都要 —— 只给 alt 的话人找不到是哪张图
         evidence: hits.map((el) => `alt="${el.attribs.alt}" ← ${imgIdent($, el)}`),
+        count: hits.length,
+      });
+    },
+  },
+
+  {
+    id: 'img-dimensions-missing',
+    level: '建议',
+    run($) {
+      const hits = $('img')
+        .toArray()
+        .filter((el) => {
+          const a = el.attribs || {};
+          return !(hasPixelSize(a.width) && hasPixelSize(a.height));
+        });
+      if (hits.length === 0) return null;
+
+      return finding({
+        rule: 'img-dimensions-missing',
+        group: GROUP,
+        level: '建议',
+        detail: `${hits.length} 张图片没有写有效的 width / height`,
+        evidence: hits.map((el) => {
+          const a = el.attribs || {};
+          const got = [
+            a.width != null ? `width="${a.width}"` : '无 width',
+            a.height != null ? `height="${a.height}"` : '无 height',
+          ].join(' ');
+          return `${imgIdent($, el)}（${got}）`;
+        }),
         count: hits.length,
       });
     },
