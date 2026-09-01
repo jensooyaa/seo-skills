@@ -1,10 +1,14 @@
-# 平台导入时会自动 npm install，本地调试也可能产生
 node_modules/
-package-lock.json
 
-# 平台生成的元数据
+# 平台在安装目录里生成的元数据（点开头的文件还会触发扫描器的 HIDDEN_DATA_FILE）
 .scan-result.json
 .config-schema.json
 
-# 打包产物
+# 构建产物，`npm run build` 可完全复现
+# 之所以敢不提交这个 387 KB 的压缩块：package-lock.json 锁死了 cheerio 版本，
+# 同样的 lock + 同样的 build.mjs 一定打出同样的 bundle
+seo-doctor/lib/vendor/*.js
+
+# 打包产物，`npm run pack` 可完全复现（zip 里的时间戳是写死的）
+dist/
 *.zip

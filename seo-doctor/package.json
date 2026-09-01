@@ -1,6 +1,8 @@
 {
   "name": "seo-doctor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "SEO 规范检测 skill（P0 验证版）"
+  "license": "MIT",
+  "description": "SEO 规范检测 skill",
+  "_dependencies_note": "刻意不声明 dependencies：平台导入时先 npm install 再扫描，扫描有 500 文件硬上限。需要的三方库由仓库根的 tools/build.mjs 打包成 lib/vendor/ 下的单文件。"
 }
