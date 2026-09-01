@@ -1,0 +1,19 @@
+<!--
+@case 标题组：整页没有 h1，第一个标题是 h2
++ h1-missing
+- h1-multiple   一个都没有，不该同时报「多个」
+- heading-skip  从 h2 起步不算跳级 —— 判定是逐对比较，h2 前面没有标题可比
+@evidence h1-missing <h2>
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head><title>供应商准入标准</title></head>
+<body>
+  <main>
+    <h2>准入条件</h2>
+    <p>需要提供营业执照。</p>
+    <h3>材料清单</h3>
+    <p>三份。</p>
+  </main>
+</body>
+</html>

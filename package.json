@@ -7,7 +7,10 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "verify": "node tools/verify-vendor.mjs",
-    "pack": "node tools/build.mjs && node tools/verify-vendor.mjs && node tools/pack.mjs"
+    "pack": "node tools/build.mjs && node tools/verify-vendor.mjs && node tools/pack.mjs",
+    "ruletest": "node tools/ruletest.mjs",
+    "test": "node tools/ruletest.mjs && node tools/mutation.mjs",
+    "mutation": "node tools/mutation.mjs"
   },
   "devDependencies": {
     "cheerio": "^1.2.0",
