@@ -195,6 +195,107 @@ const MUTATIONS = [
     to: "  const hit = $('div[class*=\"__never__\"]').first();",
     catcher: 'landmark-01-missing',
   },
+  // ── 元信息组 ──
+  {
+    desc: 'displayWidth 退回用字符数 —— 34 个汉字的 title 字符数没超、显示宽度超了，会漏报',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '  for (const ch of str) w += FULL_WIDTH.test(ch) ? 2 : 1;',
+    to: '  for (const ch of str) w += 1;',
+    catcher: 'meta-02-title-too-long',
+  },
+  {
+    desc: 'displayWidth 把半角也算 2 —— 英文 title 被误判成太长',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '  for (const ch of str) w += FULL_WIDTH.test(ch) ? 2 : 1;',
+    to: '  for (const ch of str) w += 2;',
+    catcher: 'meta-04-title-english-ok',
+  },
+  {
+    desc: 'title-length 不给 title-missing 让路 —— 空标题被同时报「缺失」和「太短」',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '      if (!text) return null; // 空的交给 title-missing，本条不重复报',
+    to: '      if (text === null) return null;',
+    catcher: 'meta-01-title-missing',
+  },
+  {
+    desc: 'description-length 不给 description-missing 让路',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '      if (!text) return null; // 交给 description-missing',
+    to: '      if (text === null) return null;',
+    catcher: 'meta-05-description-missing',
+  },
+  {
+    desc: 'meta 名按大小写敏感匹配 —— name="Description" 被当成没写',
+    file: 'seo-doctor/lib/rule-utils.js',
+    from: '      const k = a.name.trim().toLowerCase();',
+    to: '      const k = a.name.trim();',
+    catcher: 'meta-16-attr-case-variants',
+  },
+  {
+    desc: 'og 只认 property= 不认 name= —— 用 name 写 og 的站点被误报缺失',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: 'const ogValue = (head, key) => head.metaByProperty.get(key) ?? head.metaByName.get(key);',
+    to: 'const ogValue = (head, key) => head.metaByProperty.get(key);',
+    catcher: 'meta-16-attr-case-variants',
+  },
+  {
+    desc: 'og-incomplete 只要有一个 og 就算齐 —— 缺 og:image 漏报',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '      if (missing.length === 0) return null;',
+    to: '      if (missing.length < OG_REQUIRED.length) return null;',
+    catcher: 'meta-14-og-partial',
+  },
+
+  // ── canonical 归一化：误报的重灾区，每条边界各来一个 ──
+  {
+    desc: '归一化不去掉追踪参数 —— 「canonical 去掉 utm」这个正当用法被误报',
+    file: 'seo-doctor/lib/url-normalize.js',
+    from: '    .filter(([k]) => !isTracking(k))',
+    to: '    .filter(() => true)',
+    catcher: 'meta-09-canonical-normalized-ok',
+  },
+  {
+    desc: '归一化把所有参数都去掉 —— 第 2 页 canonical 指向第 1 页这种真错误漏报',
+    file: 'seo-doctor/lib/url-normalize.js',
+    from: '    .filter(([k]) => !isTracking(k))',
+    to: '    .filter(() => false)',
+    catcher: 'meta-11-canonical-page-param',
+  },
+  {
+    desc: '归一化不抹掉 www. 前缀 —— 站点选主域名这个标准做法被误报',
+    file: 'seo-doctor/lib/url-normalize.js',
+    from: "  const host = u.hostname.toLowerCase().replace(/^www\\./, '');",
+    to: '  const host = u.hostname.toLowerCase();',
+    catcher: 'meta-09-canonical-normalized-ok',
+  },
+  {
+    desc: '归一化不统一尾斜杠 —— /a 和 /a/ 被当成两个页面',
+    file: 'seo-doctor/lib/url-normalize.js',
+    from: "  const path = u.pathname.length > 1 ? u.pathname.replace(/\\/+$/, '') : u.pathname;",
+    to: '  const path = u.pathname;',
+    catcher: 'meta-09-canonical-normalized-ok',
+  },
+  {
+    desc: '<base href> 不先对着页面 URL 解析 —— 协议相对的 base 会抛，合法 canonical 被误报成「不是合法的 URL」',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '      const base = resolveBase(ctx.head.baseHref, ctx.url) || ctx.url;',
+    to: '      const base = ctx.head.baseHref || ctx.url;',
+    catcher: 'meta-10-canonical-protocol-relative-base',
+  },
+  {
+    desc: 'canonical-mismatch 在没有页面 URL 时也判 —— 没有对照物却硬报',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '      if (!ctx.url) return null;',
+    to: "      if (!ctx.url) { ctx = { ...ctx, url: 'https://__never__/' }; }",
+    catcher: '任一没写 @url 的用例',
+  },
+  {
+    desc: 'canonical-mismatch 在有多个 canonical 时仍去比对第一个',
+    file: 'seo-doctor/lib/rules-meta.js',
+    from: '      if (ctx.head.canonicals.length !== 1) return null;',
+    to: '      if (ctx.head.canonicals.length < 1) return null;',
+    catcher: 'meta-08-canonical-multiple',
+  },
 ];
 
 /** 跑一次 ruletest，返回它是否通过。 */

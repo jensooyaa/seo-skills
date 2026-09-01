@@ -85,6 +85,39 @@ function finding({ rule, group, level, detail, evidence = [], count }) {
   };
 }
 
+/**
+ * 收集 head 里的 meta / link。
+ *
+ * 属性**名**在 HTML 里大小写不敏感，但 CSS 属性选择器比较**值**时是敏感的 ——
+ * `meta[name="description"]` 匹配不到 `name="Description"`，而这种写法真实存在。
+ * 所以这里自己遍历、自己转小写比较，不用选择器。
+ */
+function collectHead($) {
+  const metaByName = new Map();
+  const metaByProperty = new Map();
+
+  $('head meta').each((_, el) => {
+    const a = el.attribs || {};
+    if (a.name) {
+      const k = a.name.trim().toLowerCase();
+      if (!metaByName.has(k)) metaByName.set(k, a.content == null ? '' : a.content);
+    }
+    // OG 用的是 property，不是 name。有些站两种都写，都收
+    if (a.property) {
+      const k = a.property.trim().toLowerCase();
+      if (!metaByProperty.has(k)) metaByProperty.set(k, a.content == null ? '' : a.content);
+    }
+  });
+
+  const canonicals = $('head link')
+    .toArray()
+    .filter((el) => ((el.attribs || {}).rel || '').trim().toLowerCase() === 'canonical');
+
+  const baseHref = (($('head base').first().attr('href') || '') + '').trim() || null;
+
+  return { metaByName, metaByProperty, canonicals, baseHref };
+}
+
 module.exports = {
   EVIDENCE_MAX_LEN,
   EVIDENCE_MAX_COUNT,
@@ -94,4 +127,5 @@ module.exports = {
   textOf,
   landmarkHint,
   finding,
+  collectHead,
 };

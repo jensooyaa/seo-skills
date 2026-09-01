@@ -1,10 +1,9 @@
 <!--
-@case 图片组：装饰图写 alt="" 是规范做法，一条都不该报
-- img-alt-missing      alt="" 有属性，:not([alt]) 落不进来（规则表「边界」栏）
-- img-alt-meaningless  空 alt 是「这是装饰、跳过它」的明确声明，不是没描述内容
-- h1-missing
-- h1-multiple
-- heading-skip
+@case 元信息：<base href> 是协议相对的，相对 canonical 要能正确解析——曾把合法 canonical 误报成「不是合法的 URL」
+@url https://example.com/audit/standard
+- canonical-mismatch   base 必须先对着页面 URL 解析一次再用，否则 new URL 会抛
+- canonical-missing
+- canonical-multiple
 -->
 <!doctype html>
 <html lang="zh-CN">
@@ -13,7 +12,8 @@
   <title>供应商准入标准与审核流程</title>
   <meta name="description" content="本页说明供应商准入的条件、需要提交的材料清单，以及从初审到最终评级的完整审核流程与时限要求。">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="canonical" href="https://example.com/audit/standard">
+  <base href="//www.example.com/">
+  <link rel="canonical" href="/audit/standard">
   <meta property="og:title" content="供应商准入标准与审核流程">
   <meta property="og:description" content="本页说明供应商准入的条件、需要提交的材料清单，以及从初审到最终评级的完整审核流程与时限要求。">
   <meta property="og:image" content="https://example.com/og.jpg">
@@ -23,9 +23,8 @@
   <nav><a href="/audit">审核流程</a> <a href="/faq">常见问题</a></nav>
   <main>
     <h1>供应商准入标准</h1>
-    <img src="/img/divider.svg" alt="">
-    <img src="/img/corner-decoration.png" alt="   ">
-    <img src="/img/factory-line.png" alt="产线上正在装配的三台注塑机">
+    <h2>准入条件</h2>
+    <p>需要提供营业执照与质量体系认证。</p>
   </main>
   <footer><p>© 2026 SourcingX 采购中心</p></footer>
 </body>

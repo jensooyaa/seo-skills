@@ -30,7 +30,9 @@ const BLIND_SPOTS = [
   '看不到 JS 绑定的事件 —— 只能抓内联 onclick，React/Vue 的 onClick 抓不到',
   '看不懂图片内容 —— 只能查词表，查不出「alt 与图不符」',
   '只看服务端 HTML —— 水合后才渲染的内容不在检查范围内',
-  '元信息、结构化数据、索引指令三组还没实现，一条都不会报',
+  '  ↳ 对 SPA 尤其要紧：很多站的 meta 是 react-helmet 之类在客户端写的，服务端',
+  '    HTML 里一个都没有，而 Google 第一波抓取看到的正是服务端 HTML',
+  '结构化数据、索引指令两组还没实现，一条都不会报',
 ];
 
 function parseArgs(argv) {
@@ -92,7 +94,8 @@ function printHuman(findings, meta) {
 
   console.log(`\n${'─'.repeat(60)}`);
   console.log('\n已知盲区（没报不等于没问题）：');
-  for (const line of BLIND_SPOTS) console.log(`  · ${line}`);
+  // 以空格开头的是上一条的续行，不再加项目符号
+  for (const line of BLIND_SPOTS) console.log(line.startsWith(' ') ? `   ${line}` : `  · ${line}`);
   console.log('');
   console.log('每条问题的「为什么 / 怎么改」见 references/ 下对应的规则表，按规则 ID 查表。');
   console.log('');

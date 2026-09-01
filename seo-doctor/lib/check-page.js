@@ -18,7 +18,9 @@
 
 const { load } = require('./vendor/cheerio.js');
 
-const RULE_MODULES = [require('./rules-semantic.js')];
+const { collectHead } = require('./rule-utils.js');
+
+const RULE_MODULES = [require('./rules-semantic.js'), require('./rules-meta.js')];
 
 /** 级别从重到轻。报告分组、排序都按这个顺序。 */
 const LEVELS = ['阻断', '警告', '建议'];
@@ -45,6 +47,8 @@ function checkHtml(html, options = {}) {
 
   const ctx = {
     $,
+    // head 里的 meta / link / base 只遍历一次，元信息组和索引指令组共用
+    head: collectHead($),
     url: options.url || null,
     headers: normalizeHeaders(options.headers),
     robots: options.robots || null,
