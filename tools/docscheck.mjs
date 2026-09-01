@@ -1,12 +1,12 @@
 /**
- * 文档一致性检查：确认代码、规则表、SKILL.md 三者说的是同一件事。
+ * 文档一致性检查。
  *
- * 为什么需要它 —— 这个 skill 的报告文案不在代码里，在 `references/` 的规则表里
- * （脚本只输出规则 ID，「为什么 / 怎么改」由 Agent 查表得到）。所以**表和代码
- * 脱节不会让任何测试变红，但会让报告说一套、脚本做另一套**。
+ * 这个 skill 的本体是 `references/` 下的规则清单 —— Agent 照着清单干活，
+ * `run.js` 只是个加速器，把其中一部分判定提前算好。所以：
  *
- * 加一条规则忘了写表 → Agent 查不到，只能自己编，正是我们要避免的事。
- * 删一条规则忘了删表 → 表里躺着一条永远不会命中的规则。
+ *   清单里有、代码里没有  →  **正常**。那些条目由 Agent 自己判
+ *   代码里有、清单里没有  →  **错误**。Agent 查不到「为什么 / 怎么改」，只能自己编，
+ *                            而现编会导致同一条规则每次说法都不一样
  *
  * 跑：npm run docscheck（已并进 npm test）
  */
@@ -25,7 +25,7 @@ const { ALL_RULE_IDS } = require(path.join(SKILL_DIR, 'lib', 'check-page.js'));
 
 const problems = [];
 
-// ── 规则表：每条实现的规则都要有一节，反之亦然 ──────────────────────────
+// ── 清单：收集所有条目 ──────────────────────────────────────────────────
 const tableFiles = (await readdir(REFS)).filter((f) => f.startsWith('rules-') && f.endsWith('.md'));
 const documented = new Map(); // 规则 ID → 写在哪个文件里
 
@@ -35,40 +35,46 @@ for (const file of tableFiles) {
   for (const m of text.matchAll(/^##\s+\d+\s+·\s+([a-z0-9-]+)\s*$/gm)) {
     const id = m[1];
     if (documented.has(id)) {
-      problems.push(`规则 ${id} 在 ${documented.get(id)} 和 ${file} 里各写了一遍`);
+      problems.push(`条目 ${id} 在 ${documented.get(id)} 和 ${file} 里各写了一遍`);
     }
     documented.set(id, file);
   }
+
+  // 每条都得有「已知边界」——这一栏记的是真实误报来源，是这个 skill 最值钱的部分
+  const sections = text.split(/^##\s+\d+\s+·\s+/m).slice(1);
+  for (const sec of sections) {
+    const id = sec.split(/\s/)[0];
+    if (!/\*\*边界\*\*/.test(sec)) {
+      problems.push(`${file} 的 ${id} 缺「边界」栏 —— 那是给 Agent 的防误报说明，不能省`);
+    }
+  }
 }
 
+// ── 代码实现的每一条，清单里都必须有 ────────────────────────────────────
 for (const id of ALL_RULE_IDS) {
   if (!documented.has(id)) {
     problems.push(
-      `规则 ${id} 已实现，但 references/ 里没有对应小节 —— ` +
+      `${id} 在代码里实现了，但 references/ 里没有对应条目 —— ` +
         `Agent 查不到「为什么 / 怎么改」，只能自己编`
     );
   }
 }
-for (const [id, file] of documented) {
-  if (!ALL_RULE_IDS.includes(id)) {
-    problems.push(`${file} 里写着规则 ${id}，但代码里没有实现 —— 表里躺着一条永远不会命中的规则`);
-  }
-}
 
-// ── SKILL.md：规则清单要和实现一致，引用的文件要存在 ────────────────────
+// ── SKILL.md 引用的清单文件都得存在 ────────────────────────────────────
 const skill = await readFile(path.join(SKILL_DIR, 'SKILL.md'), 'utf8');
-
-for (const id of ALL_RULE_IDS) {
-  if (!skill.includes(`\`${id}\``)) {
-    problems.push(`SKILL.md 的规则清单里没有 ${id}`);
-  }
-}
 
 for (const m of skill.matchAll(/`(references\/[a-z0-9-]+\.md)`/g)) {
   try {
     await access(path.join(SKILL_DIR, m[1]));
   } catch {
     problems.push(`SKILL.md 引用了 ${m[1]}，但这个文件不存在`);
+  }
+}
+
+// 反过来：清单写了却没在 SKILL.md 里挂出来，Agent 不会知道有它
+for (const file of tableFiles) {
+  if (!skill.includes(`references/${file}`)) {
+    problems.push(`references/${file} 没有在 SKILL.md 里挂出来，Agent 不会知道有这份清单`);
   }
 }
 
@@ -87,11 +93,18 @@ for (const stray of ['node_modules', 'tools', 'dist']) {
   }
 }
 
-console.log(`\n文档一致性检查：${ALL_RULE_IDS.length} 条规则 × ${tableFiles.length} 份规则表`);
+// ── 报告 ────────────────────────────────────────────────────────────────
+const byAgent = [...documented.keys()].filter((id) => !ALL_RULE_IDS.includes(id));
+
+console.log(`\n文档一致性检查`);
+console.log(`  清单 ${tableFiles.length} 份，条目 ${documented.size} 条`);
+console.log(`    ${ALL_RULE_IDS.length} 条 run.js 已判好`);
+console.log(`    ${byAgent.length} 条由 Agent 照清单自己判${byAgent.length ? `：${byAgent.join('、')}` : ''}`);
 
 if (problems.length === 0) {
-  console.log('  ✓ 代码、规则表、SKILL.md 三者一致\n');
+  console.log('  ✓ 代码与清单一致，清单都挂在 SKILL.md 上\n');
 } else {
+  console.log('');
   for (const p of problems) console.log(`  ✗ ${p}`);
   console.log('');
   process.exit(1);
