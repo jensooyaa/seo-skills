@@ -86,6 +86,26 @@ function finding({ rule, group, level, detail, evidence = [], count }) {
 }
 
 /**
+ * 东亚全角字符。这些字的显示宽度约等于两个半角字符。
+ * 范围取自 Unicode 的 East Asian Wide / Fullwidth 两类。
+ */
+const FULL_WIDTH =
+  /[ᄀ-ᅟ⺀-꓏ꥠ-꥿가-힣豈-﫿︐-︙︰-﹯＀-｠￠-￦]/;
+
+/**
+ * 「半角当量」长度。
+ *
+ * ⚠️ 不能用 `str.length`。**Google 是按像素宽度截断的，不是按字符数** ——
+ * 一个汉字约等于两个英文字母宽。按字符数算的话，中文页面会被判成「太短」、
+ * 英文页面被判成「太长」，两头都错。
+ */
+function displayWidth(str) {
+  let w = 0;
+  for (const ch of str) w += FULL_WIDTH.test(ch) ? 2 : 1;
+  return w;
+}
+
+/**
  * 收集 head 里的 meta / link。
  *
  * 属性**名**在 HTML 里大小写不敏感，但 CSS 属性选择器比较**值**时是敏感的 ——
@@ -128,4 +148,5 @@ module.exports = {
   landmarkHint,
   finding,
   collectHead,
+  displayWidth,
 };

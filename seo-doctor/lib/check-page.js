@@ -19,6 +19,7 @@
 const { load } = require('./vendor/cheerio.js');
 
 const { collectHead } = require('./rule-utils.js');
+const { collectFacts } = require('./page-facts.js');
 
 const RULE_MODULES = [require('./rules-semantic.js'), require('./rules-meta.js')];
 
@@ -43,6 +44,22 @@ const ALL_RULE_IDS = RULE_MODULES.flatMap((m) => m.rules.map((r) => r.id));
  * @returns {object[]} findings，按级别从重到轻排序
  */
 function checkHtml(html, options = {}) {
+  return analyzePage(html, options).findings;
+}
+
+/**
+ * 检查一份 HTML，同时返回**事实**和**问题**。
+ *
+ * 分这两块是刻意的：
+ *   findings —— 「有什么问题」，由规则判定，每条对应 references/ 里的一条规则
+ *   facts    —— 「页面上有什么」，纯陈述不判断
+ *
+ * 只给 findings 的话，一个没什么问题的页面报告就只剩两三行，看的人不知道
+ * 到底查了什么。详见 page-facts.js 顶部的说明。
+ *
+ * @returns {{facts: object, findings: object[]}}
+ */
+function analyzePage(html, options = {}) {
   const $ = load(html == null ? '' : html);
 
   const ctx = {
@@ -80,7 +97,8 @@ function checkHtml(html, options = {}) {
     }
   }
 
-  return findings.sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level));
+  findings.sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level));
+  return { facts: collectFacts($, ctx), findings };
 }
 
 /** 响应头统一成小写键 —— HTTP 头名大小写不敏感，各家服务器写法不一。 */
@@ -91,4 +109,4 @@ function normalizeHeaders(headers) {
   return out;
 }
 
-module.exports = { checkHtml, LEVELS, ALL_GROUPS, ALL_RULE_IDS };
+module.exports = { checkHtml, analyzePage, LEVELS, ALL_GROUPS, ALL_RULE_IDS };

@@ -1,10 +1,17 @@
 <!--
-@case 元信息：<html> 没有 lang 属性
-+ lang-missing
-@fact lang null
+@case 页面概况：ld+json 用 @graph 包一层（Yoast / RankMath 的默认输出），类型要能取出来；坏掉的那段要记下解析失败
+@fact structured.length 2
+@fact structured.0.types.0 Organization
+@fact structured.0.types.2 WebPage
+@fact structured.0.types.3 CollectionPage
+@fact structured.0.types.length 4
+@fact structured.1.types.length 0
+- title-missing
+- canonical-missing
+- og-incomplete
 -->
 <!doctype html>
-<html>
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <title>供应商准入标准与审核流程</title>
@@ -14,6 +21,16 @@
   <meta property="og:title" content="供应商准入标准与审核流程">
   <meta property="og:description" content="本页说明供应商准入的条件、需要提交的材料清单，以及从初审到最终评级的完整审核流程与时限要求。">
   <meta property="og:image" content="https://example.com/og.jpg">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"Organization","name":"SourcingX"},
+    {"@type":"WebSite","url":"https://example.com/"},
+    {"@type":["WebPage","CollectionPage"],"name":"准入标准"}
+  ]}
+  </script>
+  <script type="application/ld+json">
+  {"@type":"Product", "name":"缺了右花括号"
+  </script>
 </head>
 <body>
   <header><a href="/">供应商门户</a></header>

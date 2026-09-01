@@ -1,8 +1,11 @@
 /**
- * 规则测试：拿 tools/cases/ 下的 HTML 喂给 checkHtml()，比对文件头声明的期望。
+ * 规则测试：拿 tools/cases/ 下的 HTML 喂给 analyzePage()，比对文件头声明的期望。
  *
- * 它调的是 `checkHtml(html, options)`，**不关心内部怎么实现** —— 换解析库、
+ * 它调的是 `analyzePage(html, options)`，**不关心内部怎么实现** —— 换解析库、
  * 重构规则都不用改用例，这是重构时唯一的安全网。
+ *
+ * 两样东西都测：`findings`（有什么问题）和 `facts`（页面上有什么）。
+ * facts 会原样进报告，所以不能没人管。
  *
  * ## 用例格式
  *
@@ -15,6 +18,9 @@
  *   @robots 404                            可选，同源 robots.txt 的状态
  *   + h1-missing
  *   - h1-multiple    只有一个 h1 时不该报（抄规则表的「边界」栏）
+ *   @detail   h1-multiple 2 个                detail 文案里要含这个子串
+ *   @evidence h1-multiple 在 <nav> 内          某条证据里要含这个子串
+ *   @fact     title.width 24                  「页面概况」里这一项的值
  *   -->
  *
  * ## 判定是严格的
@@ -39,7 +45,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CASES = path.join(ROOT, 'tools', 'cases');
 
 const require = createRequire(import.meta.url);
-const { checkHtml, ALL_RULE_IDS } = require(path.join(ROOT, 'seo-doctor', 'lib', 'check-page.js'));
+const { analyzePage, ALL_RULE_IDS } = require(path.join(ROOT, 'seo-doctor', 'lib', 'check-page.js'));
 
 const RULE_SET = new Set(ALL_RULE_IDS);
 
@@ -56,6 +62,7 @@ function parseCase(text, file) {
     expect: new Set(),
     forbid: new Map(), // 规则 ID → 写在后面的理由
     contains: [],      // {id, field, needle} —— 对证据/文案内容的断言
+    facts: [],         // {path, expected} —— 对「页面概况」的断言
     groups: undefined,
   };
 
@@ -77,6 +84,12 @@ function parseCase(text, file) {
       spec.headers[k.trim().toLowerCase()] = rest.join(':').trim();
     } else if (line.startsWith('@robots')) {
       spec.robots = line.slice(7).trim();
+    } else if (line.startsWith('@fact')) {
+      // @fact <点分路径> <期望值>   断言 analyzePage 采集到的事实，如
+      //   @fact title.width 24        @fact counts.images 3
+      //   @fact structured.0.types.0 Organization
+      const [p1, ...rest] = line.slice(5).trim().split(/\s+/);
+      spec.facts.push({ path: p1, expected: rest.join(' ') });
     } else if (line.startsWith('@evidence') || line.startsWith('@detail')) {
       // @evidence <规则> <必须出现的子串>   证据里要包含什么
       // @detail   <规则> <必须出现的子串>   detail 文案里要包含什么
@@ -106,6 +119,11 @@ function parseCase(text, file) {
   }
 
   return spec;
+}
+
+/** 点分路径取值，支持数组下标和 .length。 */
+function dig(obj, dotted) {
+  return dotted.split('.').reduce((cur, key) => (cur == null ? undefined : cur[key]), obj);
 }
 
 /** `@robots 404` 这类简写还原成 loadRobots() 的返回结构。 */
@@ -146,7 +164,7 @@ for (const file of files) {
     continue;
   }
 
-  const findings = checkHtml(text, {
+  const { facts, findings } = analyzePage(text, {
     url: spec.url,
     headers: spec.headers,
     robots: buildRobots(spec.robots),
@@ -170,6 +188,15 @@ for (const file of files) {
       lines.push(
         `不该报 ${id}，却报了：${fired.get(id).detail}` + (why ? `\n        （用例注明：${why}）` : '')
       );
+    }
+  }
+
+  // 对「页面概况」的断言 —— 事实进了报告就不能没人管
+  for (const a of spec.facts) {
+    assertions++;
+    const got = dig(facts, a.path);
+    if (String(got) !== a.expected) {
+      lines.push(`@fact ${a.path} 应为「${a.expected}」，实得「${got}」`);
     }
   }
 

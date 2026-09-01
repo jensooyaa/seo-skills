@@ -198,14 +198,14 @@ const MUTATIONS = [
   // ── 元信息组 ──
   {
     desc: 'displayWidth 退回用字符数 —— 34 个汉字的 title 字符数没超、显示宽度超了，会漏报',
-    file: 'seo-doctor/lib/rules-meta.js',
+    file: 'seo-doctor/lib/rule-utils.js',
     from: '  for (const ch of str) w += FULL_WIDTH.test(ch) ? 2 : 1;',
     to: '  for (const ch of str) w += 1;',
     catcher: 'meta-02-title-too-long',
   },
   {
     desc: 'displayWidth 把半角也算 2 —— 英文 title 被误判成太长',
-    file: 'seo-doctor/lib/rules-meta.js',
+    file: 'seo-doctor/lib/rule-utils.js',
     from: '  for (const ch of str) w += FULL_WIDTH.test(ch) ? 2 : 1;',
     to: '  for (const ch of str) w += 2;',
     catcher: 'meta-04-title-english-ok',
@@ -295,6 +295,36 @@ const MUTATIONS = [
     from: '      if (ctx.head.canonicals.length !== 1) return null;',
     to: '      if (ctx.head.canonicals.length < 1) return null;',
     catcher: 'meta-08-canonical-multiple',
+  },
+
+  // ── 页面概况（事实层）──
+  {
+    desc: '标题大纲只取第一个 —— 报告里的层级树塌成一行',
+    file: 'seo-doctor/lib/page-facts.js',
+    from: '    .slice(0, OUTLINE_MAX)',
+    to: '    .slice(0, 1)',
+    catcher: 'meta-15-clean',
+  },
+  {
+    desc: '缺 alt 的图片数改成「alt 为空」—— 与 img-alt-missing 的口径不一致',
+    file: 'seo-doctor/lib/page-facts.js',
+    from: "      imagesNoAlt: $('img:not([alt])').length,",
+    to: `      imagesNoAlt: $('img[alt=""]').length,`,
+    catcher: 'img-05-mixed',
+  },
+  {
+    desc: 'ld+json 不认 @graph 包一层的写法 —— Yoast / RankMath 输出的类型全取不到',
+    file: 'seo-doctor/lib/page-facts.js',
+    from: "  if (Array.isArray(node['@graph'])) for (const n of node['@graph']) typesOf(n, out);",
+    to: '  // @graph 不处理',
+    catcher: 'meta-17-jsonld-graph',
+  },
+  {
+    desc: 'ld+json 的 @type 是数组时只取第一个 —— ["WebPage","CollectionPage"] 丢一半',
+    file: 'seo-doctor/lib/page-facts.js',
+    from: "  else if (Array.isArray(t)) out.push(...t.filter((x) => typeof x === 'string'));",
+    to: '  else if (Array.isArray(t)) out.push(t[0]);',
+    catcher: 'meta-17-jsonld-graph',
   },
 ];
 
