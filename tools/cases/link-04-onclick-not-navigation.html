@@ -1,8 +1,13 @@
 <!--
-@case 标题组：唯一 h1、层级连续递增 —— 一条都不该报
+@case 链接组：onclick 做的不是跳转（展开面板、埋点），不该报
+- link-fake             没命中 location/href/open(/push(/navigate/router 任何一个关键词
+- link-empty-href
+- anchor-text-generic
 - h1-missing
 - h1-multiple
 - heading-skip
+- img-alt-missing
+- img-alt-meaningless
 -->
 <!doctype html>
 <html lang="zh-CN">
@@ -12,10 +17,8 @@
   <nav><a href="/audit">审核流程</a> <a href="/faq">常见问题</a></nav>
   <main>
     <h1>供应商准入标准</h1>
-    <h2>准入条件</h2>
-    <h3>材料清单</h3>
-    <h2>审核流程</h2>
-    <h3>初审</h3>
+    <button onclick="togglePanel('materials')">展开材料清单</button>
+    <div onclick="track('click_faq')">常见问题</div>
   </main>
   <footer><p>© 2026 SourcingX 采购中心</p></footer>
 </body>

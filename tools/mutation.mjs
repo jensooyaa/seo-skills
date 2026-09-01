@@ -67,6 +67,134 @@ const MUTATIONS = [
     to: 'return flat;',
     catcher: 'heading-07-evidence-clip',
   },
+
+  // ── 图片组 ──
+  {
+    desc: 'img-alt-missing 判成「alt 为空」而不是「alt 属性不存在」—— 装饰图的 alt="" 被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "const hits = $('img:not([alt])').toArray();",
+    to: "const hits = $('img').toArray().filter((el) => !(el.attribs.alt || ''));",
+    catcher: 'img-02-decorative-empty-alt',
+  },
+  {
+    desc: 'img-alt-meaningless 改成包含匹配 —— 「产品主图：…」这类好 alt 被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '    PLACEHOLDER_ALT_WORDS.has(norm) ||',
+    to: '    [...PLACEHOLDER_ALT_WORDS].some((w) => norm.includes(w)) ||',
+    catcher: 'img-04-alt-substring-not-hit',
+  },
+  {
+    desc: 'img-alt-meaningless 把空 alt 判成「没描述内容」—— 装饰图的 alt="" / alt="   " 被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "  if (norm === '') return false;",
+    to: "  if (norm === '') return true;",
+    catcher: 'img-02-decorative-empty-alt'
+  },
+  {
+    desc: 'img-alt-meaningless 不认文件名形态的 alt',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '    ALT_LOOKS_LIKE_FILENAME.test(norm) ||',
+    to: '    false ||',
+    catcher: 'img-03-alt-meaningless',
+  },
+  {
+    desc: 'img-alt-meaningless 不认相机默认名（DSC_0431）',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '    ALT_CAMERA_DEFAULT.test(norm)',
+    to: '    false',
+    catcher: 'img-03-alt-meaningless',
+  },
+
+  // ── 链接组 ──
+  {
+    desc: 'link-empty-href 把页内锚点也算成空 —— href="#materials" 被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "  if (href === '' || href === '#') return true;",
+    to: "  if (href === '' || href.startsWith('#')) return true;",
+    catcher: 'link-02-real-anchors',
+  },
+  {
+    desc: 'link-empty-href 漏掉 javascript: 伪协议',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "  return href.toLowerCase().startsWith('javascript:');",
+    to: '  return false;',
+    catcher: 'link-01-empty-href',
+  },
+  {
+    desc: 'link-empty-href 漏掉「压根没有 href 属性」这种',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '  if (raw === undefined) return true;',
+    to: '  if (raw === undefined) return false;',
+    catcher: 'link-01-empty-href',
+  },
+  {
+    desc: 'link-fake 不过滤跳转关键词 —— 展开面板、埋点这类 onclick 全被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "        .filter((el) => ONCLICK_NAVIGATES.test(el.attribs.onclick || ''));",
+    to: '        .filter(() => true);',
+    catcher: 'link-04-onclick-not-navigation',
+  },
+  {
+    desc: 'link-fake 忘了排除 a —— 自带 onclick 的正常链接被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "        .filter((el) => (el.tagName || el.name) !== 'a')",
+    to: '        .filter(() => true)',
+    catcher: 'link-02-real-anchors',
+  },
+  {
+    desc: 'anchor-text-generic 改成包含匹配 —— 「了解更多关于…的信息」被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '        .filter((el) => GENERIC_ANCHOR_WORDS.has(anchorText($, el).toLowerCase()));',
+    to: "        .filter((el) => [...GENERIC_ANCHOR_WORDS].some((w) => anchorText($, el).toLowerCase().includes(w)));",
+    catcher: 'link-06-anchor-substring-not-hit',
+  },
+  {
+    desc: 'anchor-text-generic 大小写敏感 —— 「Read More」漏掉',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '        .filter((el) => GENERIC_ANCHOR_WORDS.has(anchorText($, el).toLowerCase()));',
+    to: '        .filter((el) => GENERIC_ANCHOR_WORDS.has(anchorText($, el)));',
+    catcher: 'link-05-anchor-generic',
+  },
+  {
+    desc: 'anchor-text-generic 不拿图片链接的 alt 当锚文本 —— 纯图片链接漏掉',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "  if (imgs.length === 1) return (imgs.get(0).attribs.alt || '').trim();",
+    to: "  if (imgs.length === 1) return '';",
+    catcher: 'link-05-anchor-generic',
+  },
+
+  // ── 地标组 ──
+  {
+    desc: 'landmark-duplicate 连 nav / header / footer 也查重复 —— 页脚再放一个 nav 就被误报',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "      const all = $('main').toArray();",
+    to: "      const all = $('main, nav, header, footer').toArray();",
+    catcher: 'landmark-04-multi-nav-ok',
+  },
+  {
+    desc: 'landmark-duplicate 的边界写成 < 1 —— 只有一个 main 也报重复',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    // `if (all.length <= 1)` 在 h1-multiple 里也有一处，所以要带上上一行才唯一
+    from: `      const all = $('main').toArray();
+      if (all.length <= 1) return null;`,
+    to: `      const all = $('main').toArray();
+      if (all.length < 1) return null;`,
+    catcher: 'landmark-02-complete',
+  },
+  {
+    desc: 'landmark-missing 漏查其中一个地标（footer）',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: "const LANDMARKS = ['main', 'nav', 'header', 'footer'];",
+    to: "const LANDMARKS = ['main', 'nav', 'header'];",
+    catcher: 'landmark-01-missing',
+  },
+  {
+    desc: 'landmark-missing 不再提示疑似顶替的 div —— 报告只说缺什么，不说改哪个',
+    file: 'seo-doctor/lib/rules-semantic.js',
+    from: '  const hit = $(`div[class*="${name}"], div[id*="${name}"]`).first();',
+    to: "  const hit = $('div[class*=\"__never__\"]').first();",
+    catcher: 'landmark-01-missing',
+  },
 ];
 
 /** 跑一次 ruletest，返回它是否通过。 */

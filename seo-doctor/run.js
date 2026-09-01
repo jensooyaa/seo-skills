@@ -1,54 +1,150 @@
 /**
- * seo-doctor · 打包链验证版
+ * seo-doctor · 唯一入口
  *
- * 这一版还不做 SEO 检测，只回答一个问题：
+ * 用法：
+ *   node run.js --mode check --url "https://example.com/page"
+ *   node run.js --mode check --url "..." --json     输出原始 JSON，给报告层 / CI 吃
  *
- *   **esbuild 打出来的 cheerio 单文件，在平台上真的加载得了、用得了吗？**
- *
- * 为什么非得在平台上跑一遍才算数：bundle 里只要还留着一处「没打进来的包」的
- * require，在开发仓库里是发现不了的 —— 那些包就躺在仓库的 node_modules 里
- * （都是 cheerio 的依赖），怎么试都是绿的；而平台的 skill 目录没有 node_modules。
- * 这个坑真踩过：最初用 esbuild 的 external 处理 undici / encoding-sniffer，
- * 本地全绿，换到无 node_modules 的环境立刻 `Cannot find module`。
- *
- * 仓库里 `npm run verify` 会在临时目录复现平台环境，但那终究是模拟，
- * 平台跑通才是终验。
+ * ⚠️ 全文件没有一处 `fs`。早先有个 `--file` 模式用 fs.readFileSync 读本地 HTML，
+ * 被平台安全扫描报 DATA_EXFIL_JS_FS_ACCESS(HIGH)「可能读取敏感数据」。那只是本地
+ * 调试的便利，换一条每位同事导入时都会看到的 HIGH 不值得。要检查本地 HTML，
+ * 在开发仓库里直接调 lib/check-page.js 的 checkHtml()。
  */
 
 'use strict';
 
-const { load } = require('./lib/vendor/cheerio.js');
+const { checkHtml, LEVELS } = require('./lib/check-page.js');
 
-console.log('=== seo-doctor · 打包链验证 ===');
-console.log('node 版本  :', process.version);
-console.log('脚本路径   :', __filename);
+// ⚠️ HTTP header 只能是 latin1，这里写中文会抛 Cannot convert argument to a ByteString
+const USER_AGENT = 'Mozilla/5.0 (compatible; seo-doctor/0.3; +internal SEO lint tool)';
+const TIMEOUT_MS = 15000;
 
-// 用真正会用到的能力做冒烟：选择器、属性、后代、缺属性筛选、向上找祖先
-const $ = load(`
-  <html lang="zh-CN"><head><title>示例</title></head>
-  <body><nav><a href="/">首页</a></nav>
-  <main><h1>正文标题</h1><img src="a.png"><img src="b.png" alt="有 alt"></main>
-  </body></html>`);
-
-const checks = [
-  ['html[lang]', $('html').attr('lang'), 'zh-CN'],
-  ['title 文本', $('title').text(), '示例'],
-  ['main h1 数', String($('main h1').length), '1'],
-  ['img 缺 alt 数', String($('img:not([alt])').length), '1'],
-  ['a 的 nav 祖先', String($('a').closest('nav').length), '1'],
+/**
+ * 已知盲区。**必须跟着结果一起输出。**
+ *
+ * 不写出来，使用者会把「没报」当成「没问题」，而下面这几条恰恰是脚本永远
+ * 看不见的地方 —— 尤其 link-fake 那条，现代前端的事件绑定它一个都抓不到。
+ */
+const BLIND_SPOTS = [
+  '看不到 CSS —— display:none 的 h1 会被算作存在',
+  '看不到 JS 绑定的事件 —— 只能抓内联 onclick，React/Vue 的 onClick 抓不到',
+  '看不懂图片内容 —— 只能查词表，查不出「alt 与图不符」',
+  '只看服务端 HTML —— 水合后才渲染的内容不在检查范围内',
+  '元信息、结构化数据、索引指令三组还没实现，一条都不会报',
 ];
 
-let bad = 0;
-for (const [name, got, want] of checks) {
-  const ok = got === want;
-  if (!ok) bad++;
-  console.log(`  ${ok ? '✓' : '✗'} ${name.padEnd(16)} ${got}${ok ? '' : `（应为 ${want}）`}`);
+function parseArgs(argv) {
+  const args = {};
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i];
+    if (!token.startsWith('--')) continue;
+    const key = token.slice(2);
+    const next = argv[i + 1];
+    if (next === undefined || next.startsWith('--')) args[key] = true;
+    else {
+      args[key] = next;
+      i++;
+    }
+  }
+  return args;
 }
 
-if (bad) {
-  console.error(`\ncheerio bundle 有 ${bad} 项不对，先别往下做。`);
+async function loadHtml(url) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  return {
+    html: await res.text(),
+    status: res.status,
+    finalUrl: res.url,
+    // X-Robots-Tag 只能从这里拿到 —— 它不在 HTML 里，看源码永远看不出来。
+    // 索引指令组（未实现）会用它。
+    headers: Object.fromEntries(res.headers),
+  };
+}
+
+function printHuman(findings, meta) {
+  const counts = Object.fromEntries(LEVELS.map((l) => [l, 0]));
+  for (const f of findings) counts[f.level] = (counts[f.level] || 0) + 1;
+
+  console.log('');
+  console.log(`检查对象   ${meta.url}`);
+  if (meta.finalUrl && meta.finalUrl !== meta.url) console.log(`最终 URL   ${meta.finalUrl}`);
+  console.log(`状态码     ${meta.status}`);
+  console.log(`HTML 大小  ${(meta.size / 1024).toFixed(1)} KB`);
+  console.log('');
+  console.log(`阻断 ${counts['阻断']}   警告 ${counts['警告']}   建议 ${counts['建议']}`);
+
+  if (findings.length === 0) console.log('\n检查未发现问题。');
+
+  for (const level of LEVELS) {
+    const group = findings.filter((f) => f.level === level);
+    if (group.length === 0) continue;
+    console.log(`\n${'─'.repeat(60)}`);
+    for (const f of group) {
+      console.log(`\n[${f.level}] ${f.detail}`);
+      console.log(`        规则 ${f.rule}（${f.group}）`);
+      for (const e of f.evidence) console.log(`        · ${e}`);
+    }
+  }
+
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log('\n已知盲区（没报不等于没问题）：');
+  for (const line of BLIND_SPOTS) console.log(`  · ${line}`);
+  console.log('');
+  console.log('每条问题的「为什么 / 怎么改」见 references/ 下对应的规则表，按规则 ID 查表。');
+  console.log('');
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const mode = args.mode || 'check';
+
+  if (mode !== 'check') {
+    console.error(`暂不支持的 --mode：${mode}（当前只实现了 check）`);
+    process.exit(2);
+  }
+  if (!args.url || args.url === true) {
+    console.error('用法：node run.js --mode check --url "https://example.com/page"');
+    console.error('      可选：--json 输出机器可读格式');
+    process.exit(2);
+  }
+
+  let loaded;
+  try {
+    loaded = await loadHtml(args.url);
+  } catch (err) {
+    console.error(`读取失败：${err.message}`);
+    process.exit(1);
+  }
+
+  const pageUrl = loaded.finalUrl || args.url;
+  const findings = checkHtml(loaded.html, { url: pageUrl, headers: loaded.headers });
+  const meta = { url: args.url, finalUrl: loaded.finalUrl, status: loaded.status, size: loaded.html.length };
+
+  if (args.json) {
+    console.log(
+      JSON.stringify(
+        {
+          url: pageUrl,
+          status: meta.status,
+          checkedAt: new Date().toISOString(),
+          blindSpots: BLIND_SPOTS,
+          findings,
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+
+  printHuman(findings, meta);
+}
+
+main().catch((err) => {
+  console.error('未预期的错误：', err);
   process.exit(1);
-}
-
-console.log('\ncheerio bundle 在本环境加载正常，打包链通过。');
-console.log('检测逻辑尚未实现，下一步开始按 references/ 的规则表往上盖规则。');
+});
