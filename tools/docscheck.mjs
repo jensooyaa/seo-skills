@@ -71,10 +71,12 @@ for (const m of skill.matchAll(/`(references\/[a-z0-9-]+\.md)`/g)) {
   }
 }
 
-// 反过来：清单写了却没在 SKILL.md 里挂出来，Agent 不会知道有它
-for (const file of tableFiles) {
+// 反过来：references/ 下的文件写了却没在 SKILL.md 里挂出来，Agent 不会知道有它。
+// 不限于 rules-*.md —— 诊断链路、取数步骤这些同样要挂上去才会被读到。
+const allRefs = (await readdir(REFS)).filter((f) => f.endsWith('.md'));
+for (const file of allRefs) {
   if (!skill.includes(`references/${file}`)) {
-    problems.push(`references/${file} 没有在 SKILL.md 里挂出来，Agent 不会知道有这份清单`);
+    problems.push(`references/${file} 没有在 SKILL.md 里挂出来，Agent 不会知道有它`);
   }
 }
 
@@ -97,7 +99,7 @@ for (const stray of ['node_modules', 'tools', 'dist']) {
 const byAgent = [...documented.keys()].filter((id) => !ALL_RULE_IDS.includes(id));
 
 console.log(`\n文档一致性检查`);
-console.log(`  清单 ${tableFiles.length} 份，条目 ${documented.size} 条`);
+console.log(`  references/ 共 ${allRefs.length} 份（其中规则清单 ${tableFiles.length} 份，条目 ${documented.size} 条）`);
 console.log(`    ${ALL_RULE_IDS.length} 条 run.js 已判好`);
 console.log(`    ${byAgent.length} 条由 Agent 照清单自己判${byAgent.length ? `：${byAgent.join('、')}` : ''}`);
 

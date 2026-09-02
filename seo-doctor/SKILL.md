@@ -77,7 +77,7 @@ robots.txt 和 sitemap 都是纯文本，三种里通常总有一种能拿到。
 | 一个 URL | 1~4 | 单页诊断：断在哪一环、每条的「为什么 / 怎么改」、优先级 |
 | 站点首页 | 1~5 | 加上：可达页面清单、**孤儿页（sitemap 差集）**、内链结构、模板层共性问题、死链 |
 | 一批同类 URL | 1~4 且能判模板层 | 按规则聚合（「`canonical-missing` 命中 18/20」）+ 模板层结论 |
-| GSC 导出的 CSV | 6，并能反查 1~5 | 收录率与未收录原因分类、机会词，以及**从数据反查到代码根因** |
+| GSC 导出的 CSV | 6，并能反查 1~5 | 收录率、15 类未收录原因归类、机会词，以及**从数据反查到代码根因** |
 | 代码 / 模板文件 | 定位到文件 | 指出该改哪个文件的哪一段（**不代写代码**） |
 
 **不交付**：SEO 评分、关键词研究、外链分析、排名查询、修复代码。
@@ -130,7 +130,8 @@ node "<CUSTOM>/seo-doctor/run.js" --mode crawl --url "{站点首页}"
 - **环节 1、2** 基本靠你 —— 尤其环节 2 必须用浏览器对比渲染前后
 - **环节 5 有一半靠你** —— 爬虫不执行 JS，所以**按钮式跳转、分页器、列表项**
   这三种 JS 跳转它一个都看不到。要用浏览器**真的点一下**看 URL 变不变
-- **环节 6** 完全靠 GSC 数据
+- **环节 6** 完全靠 Search Console —— 见 `references/gsc-navigation.md`。
+  ⚠️ **只读**：只看、只导出，绝不提交 sitemap、绝不请求编入索引
 
 有一件事值得依赖它们：**长度按「半角当量」算**（全角字符算 2）。Google 按像素宽度
 截断而不是字符数，人工数字符会两头都错。
@@ -144,6 +145,8 @@ node "<CUSTOM>/seo-doctor/run.js" --mode crawl --url "{站点首页}"
 | `references/rules-meta.md` | 3、4 | title / description 长度、canonical、lang、viewport、og |
 | `references/rules-semantic.md` | 4 | h1、标题层级、img alt、空 href、假链接、锚文本、地标 |
 | `references/rules-schema.md` | 4 | ld+json 语法、Google 富媒体必填字段 |
+| `references/gsc-navigation.md` | 6 | Search Console 怎么取数、只读边界、界面改版了怎么办 |
+| `references/gsc-analysis.md` | 6 | 15 类未收录原因 → 六环映射、和前五环交叉验证、五个数据陷阱 |
 | `references/review-guide.md` | — | 优先级怎么排、模板层怎么判、什么时候该追问 |
 
 **每条规则的「已知边界」栏必须读。** 判定条件你自己也能想出来，但下面这些是
